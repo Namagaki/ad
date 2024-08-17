@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>広告バツボタン練習サイト</title>
+    <style>
+        .ad-container {
+            position: absolute;
+            border: 1px solid black;
+            background-color: white;
+            padding: 10px;
+            z-index: 1000;
+        }
+
+        .ad-content {
+            cursor: pointer;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        #counter {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        #timer {
+            position: fixed;
+            top: 40px;
+            left: 10px;
+            font-size: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        #result {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: red;
+            display: none;
+            text-align: center;
+        }
+
+        #ranking {
+            position: fixed;
+            top: 70px;
+            left: 10px;
+            font-size: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #retry-btn {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 36px;
+            cursor: pointer;
+            border: none;
+            background-color: #FF5733;
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #start-btn {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 36px;
+            cursor: pointer;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #mode-selection {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="mode-selection">
+        <p>スタートボタンを押してゲームを開始してください:</p>
+        <button id="start-btn" onclick="startGame()">スタート</button>
+    </div>
+
+    <div id="counter" style="display: none;">閉じた広告数: 0</div>
+    <div id="timer" style="display: none;">残り時間: 10秒</div>
+    <div id="result"></div>
+    <div id="ranking" style="display: none;">ランキング:</div>
+
+    <script>
+        let closeCount = 0;
+        let timeLeft = 10; // 10秒のタイマー設定
+        let timerInterval;
+        let adShowing = false;
+
+        function showAd() {
+            if (!adShowing) {
+                adShowing = true;
+                let ad = document.createElement('div');
+                ad.className = 'ad-container';
+                ad.innerHTML = `
+                    <a href="https://namagaki2000.booth.pm/items/6015496" target="_blank" class="ad-content">
+                        <img src="https://d.kuku.lu/5btpjx6fd" alt="広告">
+                        <p>この商品をお試しください！</p>
+                    </a>
+                    <button class="close-btn" onclick="closeAd(this)">×</button>
+                `;
+                
+                document.body.appendChild(ad);
+
+                // 広告の表示位置をランダムに設定
+                ad.style.top = Math.random() * (window.innerHeight - ad.offsetHeight) + 'px';
+                ad.style.left = Math.random() * (window.innerWidth - ad.offsetWidth) + 'px';
+            }
+        }
+
+        function closeAd(button) {
+            closeCount++;
+            adShowing = false;
+            let ad = button.parentElement;
+            ad.remove();
+            document.getElementById('counter').innerText = `閉じた広告数: ${closeCount}`;
+            if (timeLeft > 0) {
+                showAd(); // 次の広告を表示
+            }
+        }
+
+        function startGame() {
+            document.getElementById('mode-selection').style.display = 'none';
+            closeCount = 0;
+            timeLeft = 10;
+            document.getElementById('counter').style.display = 'block';
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('counter').innerText = `閉じた広告数: ${closeCount}`;
+            document.getElementById('timer').innerText = `残り時間: ${timeLeft}秒`;
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('ranking').style.display = 'none';
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = `残り時間: ${timeLeft}秒`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+            showAd();
+        }
+
+        function endGame() {
+            document.body.innerHTML = '';  // 画面をクリア
+            let result = document.createElement('div');
+            result.id = 'result';
+            result.innerHTML = `
+                あなたは ${closeCount} 個の広告を閉じました！<br>
+                <button id="retry-btn" onclick="retryGame()">リトライ</button>
+            `;
+            document.body.appendChild(result);
+
+            updateRanking(closeCount);
+        }
+
+        function updateRanking(score) {
+            let ranking = JSON.parse(localStorage.getItem('ranking')) || [];
+            ranking.push(score);
+            ranking.sort((a, b) => b - a); // 高スコア順にソート
+            localStorage.setItem('ranking', JSON.stringify(ranking));
+
+            let rankingDiv = document.createElement('div');
+            rankingDiv.id = 'ranking';
+            rankingDiv.innerHTML = 'ランキング:<br>' + ranking.slice(0, 10).map((score, index) => `${index + 1}. ${score}`).join('<br>');
+            document.body.appendChild(rankingDiv);
+        }
+
+        function retryGame() {
+            // ページをリロードしてゲームをリセット
+            location.reload();
+        }
+    </script>
+</body>
+</html>
